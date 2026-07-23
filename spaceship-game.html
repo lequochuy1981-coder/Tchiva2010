@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>🚀 Tàu Vũ Trụ – Điều Khiển Ngón Tay</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{background:#000;font-family:'Segoe UI',sans-serif;color:#fff;overflow:hidden;height:100vh;}
+
+    /* ── START SCREEN ── */
+    #ui-overlay{
+      position:fixed;inset:0;
+      background:radial-gradient(ellipse at center,#060620 0%,#000 100%);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      z-index:50;transition:opacity 0.6s;
+    }
+    #ui-overlay h1{
+      font-size:2.8rem;
+      background:linear-gradient(135deg,#00cfff,#7b2ff7);
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+      margin-bottom:6px;letter-spacing:2px;
+    }
+    #ui-overlay .subtitle{color:#666;font-size:.9rem;margin-bottom:28px;}
+
+    /* Tutorial card */
+    .tutorial-card{
+      background:rgba(255,255,255,0.04);
+      border:1px solid rgba(0,207,255,0.2);
+      border-radius:20px;padding:24px 32px;
+      display:flex;gap:32px;align-items:center;
+      max-width:640px;margin-bottom:32px;
+      backdrop-filter:blur(10px);
+    }
+    .tutorial-card svg{flex-shrink:0;}
+    .tutorial-steps{text-align:left;}
+    .tutorial-steps h3{color:#00cfff;font-size:1rem;margin-bottom:12px;letter-spacing:1px;}
+    .step{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;font-size:.88rem;color:#bbb;line-height:1.5;}
+    .step .icon{font-size:1.2rem;flex-shrink:0;margin-top:-1px;}
+    .step strong{color:#fff;}
+
+    #start-btn{
+      padding:14px 44px;font-size:1.1rem;
+      background:linear-gradient(135deg,#00cfff,#7b2ff7);
+      border:none;border-radius:50px;color:#fff;cursor:pointer;
+      letter-spacing:1px;transition:transform .2s,box-shadow .2s;
+      box-shadow:0 0 30px #7b2ff755;
+    }
+    #start-btn:hover{transform:scale(1.06);box-shadow:0 0 50px #00cfff88;}
+
+    /* ── CAMERA BG ── */
+    #cam-bg{
+      position:fixed;inset:0;width:100%;height:100%;
+      object-fit:cover;transform:scaleX(-1);
+      display:none;z-index:0;
+    }
+
+    /* ── GAME CANVAS ── */
+    #game-container{position:fixed;inset:0;display:none;z-index:1;}
+    #game-canvas{position:absolute;inset:0;width:100%;height:100%;}
+
+    /* ── HIDDEN CAM for MediaPipe ── */
+    #cam-video{
+      position:fixed;bottom:0;right:0;
+      width:320px;height:240px;
+      opacity:0;pointer-events:none;z-index:-1;
+    }
+
+    /* ── CAMERA PREVIEW PANEL ── */
+    #cam-preview{
+      position:fixed;bottom:16px;right:16px;
+      width:200px;height:150px;
+      border-radius:14px;overflow:hidden;
+      border:2px solid rgba(0,207,255,0.4);
+      box-shadow:0 0 20px rgba(0,207,255,0.3);
+      z-index:25;display:none;
+      background:#000;
+    }
+    #cam-preview video{
+      width:100%;height:100%;object-fit:cover;
+      transform:scaleX(-1);display:block;
+    }
+    #cam-preview canvas{
+      position:absolute;inset:0;
+      width:100%;height:100%;
+      transform:scaleX(-1);
+    }
+    #cam-preview-label{
+      position:absolute;bottom:6px;left:50%;
+      transform:translateX(-50%);
+      font-size:.65rem;color:#00cfff;
+      background:rgba(0,0,0,0.6);
+      padding:2px 8px;border-radius:10px;
+      white-space:nowrap;letter-spacing:.5px;
+    }
+    /* Confidence bar */
+    #conf-bar-wrap{
+      position:fixed;bottom:172px;right:16px;
+      width:200px;z-index:25;display:none;
+    }
+    #conf-bar-label{
+      font-size:.7rem;color:#aaa;margin-bottom:3px;
+      display:flex;justify-content:space-between;
+    }
+    #conf-bar-bg{
+      height:6px;background:rgba(255,255,255,0.1);
+      border-radius:4px;overflow:hidden;
+    }
+    #conf-bar-fill{
+      height:100%;width:0%;border-radius:4px;
+      background:linear-gradient(90deg,#ff4466,#ffcc00,#00cfff);
+      transition:width .1s,background-color .1s;
+    }
+
+    /* ── HUD ── */
+    #hud{
+      position:fixed;top:16px;left:50%;transform:translateX(-50%);
+      display:flex;gap:28px;
+      background:rgba(0,0,0,0.5);backdrop-filter:blur(10px);
+      border:1px solid rgba(255,255,255,0.12);border-radius:50px;
+      padding:10px 28px;z-index:20;font-size:.95rem;letter-spacing:1px;
+    }
+    .hud-item{display:flex;align-items:center;gap:6px;}
+    .label{color:#999;}.value{color:#00cfff;font-weight:bold;font-size:1.1rem;}
+
+    /* ── GESTURE TOAST ── */
+    #gesture-toast{
+      position:fixed;top:72px;left:50%;transform:translateX(-50%) scale(0.8);
+      font-size:1rem;color:#fff;z-index:22;
+      background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);
+      border:1px solid rgba(255,255,255,0.15);
+      padding:7px 20px;border-radius:30px;
+      opacity:0;pointer-events:none;
+      transition:opacity .25s,transform .25s;
+      white-space:nowrap;
+    }
+    #gesture-toast.show{
+      opacity:1;transform:translateX(-50%) scale(1);
+    }
+
+    /* ── FINGER INDICATOR ── */
+    #finger-dot{
+      position:fixed;width:22px;height:22px;border-radius:50%;
+      background:radial-gradient(circle,#fff 20%,#00cfff 100%);
+      box-shadow:0 0 18px #00cfff,0 0 40px #00cfff55;
+      pointer-events:none;z-index:30;display:none;
+      transform:translate(-50%,-50%);transition:left .03s,top .03s;
+    }
+
+    /* ── GAME OVER ── */
+    #gameover-overlay{
+      position:fixed;inset:0;background:rgba(0,0,0,0.78);
+      display:none;flex-direction:column;align-items:center;justify-content:center;z-index:40;
+    }
+    #gameover-overlay h2{font-size:3rem;color:#ff4466;text-shadow:0 0 30px #ff4466;margin-bottom:10px;}
+    .final-score{font-size:1.4rem;color:#aaa;margin-bottom:28px;}
+    .final-score span{color:#00cfff;font-weight:bold;font-size:2rem;}
+    #restart-btn{
+      padding:12px 36px;font-size:1rem;
+      background:linear-gradient(135deg,#ff4466,#7b2ff7);
+      border:none;border-radius:50px;color:#fff;cursor:pointer;
+      letter-spacing:1px;transition:transform .2s;
+    }
+    #restart-btn:hover{transform:scale(1.08);}
+  </style>
+</head>
+<body>
+
+<!-- ── START SCREEN ── -->
+<div id="ui-overlay">
+  <h1>🚀 TÀU VŨ TRỤ</h1>
+  <p class="subtitle">Điều khiển bằng ngón tay qua camera</p>
+
+  <div class="tutorial-card">
+    <!-- SVG minh hoạ ngón trỏ duỗi thẳng -->
+    <svg width="110" height="160" viewBox="0 0 110 160" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id="glow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        <linearGradient id="skinGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#f0c080"/>
+          <stop offset="100%" stop-color="#c88040"/>
+        </linearGradient>
+      </defs>
+      <!-- Palm -->
+      <rect x="22" y="95" width="66" height="55" rx="14" fill="url(#skinGrad)" stroke="#a06030" stroke-width="1.5"/>
+      <!-- Curled fingers (middle, ring, pinky, thumb) -->
+      <rect x="55" y="78" width="16" height="30" rx="8" fill="url(#skinGrad)" stroke="#a06030" stroke-width="1.5"/>
+      <rect x="72" y="82" width="14" height="26" rx="7" fill="url(#skinGrad)" stroke="#a06030" stroke-width="1.5"/>
+      <rect x="86" y="90" width="12" height="22" rx="6" fill="url(#skinGrad)" stroke="#a06030" stroke-width="1.5"/>
+      <rect x="12" y="100" width="14" height="24" rx="7" fill="url(#skinGrad)" stroke="#a06030" stroke-width="1.5"/>
+      <!-- Index finger (pointing up) -->
+      <rect x="35" y="20" width="18" height="80" rx="9" fill="url(#skinGrad)" stroke="#a06030" stroke-width="1.5"/>
+      <!-- Fingertip glow dot -->
+      <circle cx="44" cy="16" r="10" fill="none" stroke="#00cfff" stroke-width="2" filter="url(#glow)" opacity="0.9"/>
+      <circle cx="44" cy="16" r="5" fill="#00cfff" filter="url(#glow)"/>
+      <!-- Arrow -->
+      <line x1="44" y1="2" x2="44" y2="10" stroke="#00cfff" stroke-width="2" stroke-linecap="round"/>
+      <polyline points="40,6 44,1 48,6" fill="none" stroke="#00cfff" stroke-width="2" stroke-linejoin="round"/>
+    </svg>
+
+    <div class="tutorial-steps">
+      <h3>📖 HƯỚNG DẪN CHƠI</h3>
+      <div class="step"><span class="icon">☝️</span><div><strong>1 ngón trỏ</strong> – điều khiển tàu, né chướng ngại vật</div></div>
+      <div class="step"><span class="icon">✌️</span><div><strong>2 ngón</strong> – kích hoạt <span style="color:#ffcc00">TURBO</span>: tốc độ tàu tăng mạnh!</div></div>
+      <div class="step"><span class="icon">🤟</span><div><strong>3 ngón</strong> – <span style="color:#ff6688">BÙNG NỔ</span>: chướng ngại vật xuất hiện dày đặc!</div></div>
+      <div class="step"><span class="icon">✋</span><div><strong>5 ngón</strong> – <span style="color:#00ff88">XÓA SẠCH</span>: tất cả chướng ngại vật tan biến!</div></div>
+    </div>
+  </div>
+
+  <button id="start-btn">🎮 Bắt Đầu Chơi</button>
+</div>
+
+<!-- Camera background (fullscreen, mirrored) -->
+<video id="cam-bg" autoplay muted playsinline></video>
+
+<!-- Game canvas (transparent overlay) -->
+<div id="game-container">
+  <canvas id="game-canvas"></canvas>
+</div>
+
+<!-- Hidden video for MediaPipe hand tracking -->
+<video id="cam-video" autoplay muted playsinline></video>
+
+<!-- Camera preview panel (bottom-right corner) -->
+<div id="cam-preview">
+  <video id="prev-video" autoplay muted playsinline></video>
+  <canvas id="prev-canvas"></canvas>
+  <div id="cam-preview-label">📷 Camera – Skeleton tay</div>
+</div>
+<!-- Confidence bar -->
+<div id="conf-bar-wrap">
+  <div id="conf-bar-label"><span>☝️ Độ nhận diện ngón trỏ</span><span id="conf-pct">0%</span></div>
+  <div id="conf-bar-bg"><div id="conf-bar-fill"></div></div>
+</div>
+
+<!-- HUD -->
+<div id="hud" style="display:none">
+  <div class="hud-item"><span class="label">⭐ ĐIỂM</span><span class="value" id="score-val">0</span></div>
+  <div class="hud-item"><span class="label">❤️ MẠNG</span><span class="value" id="lives-val">3</span></div>
+  <div class="hud-item"><span class="label">⚡ TỐC ĐỘ</span><span class="value" id="speed-val">1x</span></div>
+</div>
+
+<div id="gesture-toast"></div>
+<div id="finger-dot"></div>
+
+<!-- Game Over -->
+<div id="gameover-overlay">
+  <h2>💥 VA CHẠM!</h2>
+  <div class="final-score">Điểm số: <span id="final-score">0</span></div>
+  <button id="restart-btn">🔄 Chơi Lại</button>
+</div>
+
+<!-- MediaPipe -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+<script>
+// ── DOM ──────────────────────────────────────────────────────────────────────
+const startBtn      = document.getElementById('start-btn');
+const uiOverlay     = document.getElementById('ui-overlay');
+const gameContainer = document.getElementById('game-container');
+const gameCanvas    = document.getElementById('game-canvas');
+const ctx           = gameCanvas.getContext('2d');
+const camBg         = document.getElementById('cam-bg');
+const camVideo      = document.getElementById('cam-video');
+const hud           = document.getElementById('hud');
+const scoreEl       = document.getElementById('score-val');
+const livesEl       = document.getElementById('lives-val');
+const speedEl       = document.getElementById('speed-val');
+const gestureToast  = document.getElementById('gesture-toast');
+const fingerDot     = document.getElementById('finger-dot');
+const gameoverDiv   = document.getElementById('gameover-overlay');
+const finalScoreEl  = document.getElementById('final-score');
+const restartBtn    = document.getElementById('restart-btn');
+
+// ── GESTURE TOAST ────────────────────────────────────────────────────────────
+let toastTimer = null;
+function showToast(msg, color='#fff'){
+  gestureToast.textContent = msg;
+  gestureToast.style.color = color;
+  gestureToast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> gestureToast.classList.remove('show'), 1600);
+}
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+let W, H;
+let score=0, lives=3, gameRunning=false, animId=null;
+let shipX, shipY, targetX, targetY;
+let fingerDetected=false;
+let obstacles=[];
+let spawnTimer=0, spawnInterval=90, speedMultiplier=1;
+let invincible=false, invTimer=0;
+// Gesture state
+let turboActive=false, turboTimer=0;       // 2-finger turbo
+let floodActive=false, floodTimer=0;       // 3-finger flood
+let lastGesture='', gestureCooldown=0;     // prevent gesture spam
+
+function resize(){
+  W = gameCanvas.width  = window.innerWidth;
+  H = gameCanvas.height = window.innerHeight;
+  if(!shipX){ shipX=W/2; shipY=H/2; targetX=W/2; targetY=H/2; }
+}
+window.addEventListener('resize', resize);
+
+// ── DRAW SHIP ────────────────────────────────────────────────────────────────
+function drawShip(x,y,alpha){
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.globalAlpha=alpha;
+  const bW=28,bH=56,nH=50,wW=24,wH=26;
+  const bTop=-bH/2, bBot=bH/2;
+
+  ctx.shadowColor='#00cfff'; ctx.shadowBlur=18;
+  const c='rgba(0,200,255,0.15)', s='#00cfff';
+
+  // Body
+  ctx.beginPath(); ctx.rect(-bW,bTop,bW*2,bH);
+  ctx.fillStyle=c; ctx.fill(); ctx.strokeStyle=s; ctx.lineWidth=2.5; ctx.stroke();
+  // Nose
+  ctx.beginPath(); ctx.moveTo(0,bTop-nH); ctx.lineTo(-bW-5,bTop); ctx.lineTo(bW+5,bTop); ctx.closePath();
+  ctx.fillStyle=c; ctx.fill(); ctx.strokeStyle=s; ctx.lineWidth=2.5; ctx.stroke();
+  // Left wing
+  ctx.beginPath(); ctx.moveTo(-bW,bBot-wH); ctx.lineTo(-bW-wW,bBot); ctx.lineTo(-bW,bBot); ctx.closePath();
+  ctx.fillStyle=c; ctx.fill(); ctx.strokeStyle=s; ctx.lineWidth=2.5; ctx.stroke();
+  // Right wing
+  ctx.beginPath(); ctx.moveTo(bW,bBot-wH); ctx.lineTo(bW+wW,bBot); ctx.lineTo(bW,bBot); ctx.closePath();
+  ctx.fillStyle=c; ctx.fill(); ctx.strokeStyle=s; ctx.lineWidth=2.5; ctx.stroke();
+  // Flame
+  ctx.shadowColor='#ff6600'; ctx.shadowBlur=22;
+  const fH=18+Math.random()*10;
+  const fg=ctx.createLinearGradient(0,bBot,0,bBot+fH);
+  fg.addColorStop(0,'rgba(255,160,0,0.9)'); fg.addColorStop(1,'rgba(255,60,0,0)');
+  ctx.beginPath(); ctx.moveTo(-bW*0.6,bBot); ctx.lineTo(0,bBot+fH); ctx.lineTo(bW*0.6,bBot); ctx.closePath();
+  ctx.fillStyle=fg; ctx.fill();
+  ctx.restore();
+}
+
+// ── OBSTACLES ────────────────────────────────────────────────────────────────
+function spawnObstacle(){
+  const w=40+Math.random()*60, h=30+Math.random()*50;
+  const x=60+Math.random()*(W-120);
+  const speed=(2+Math.random()*3)*speedMultiplier;
+  const rotSpeed=(Math.random()-0.5)*0.04;
+  obstacles.push({x, y:-h, w, h, speed, rot:0, rotSpeed});
+}
+
+function drawObstacle(o){
+  ctx.save();
+  ctx.translate(o.x,o.y); ctx.rotate(o.rot);
+  ctx.shadowColor='#ff4466'; ctx.shadowBlur=16;
+  ctx.beginPath(); ctx.rect(-o.w/2,-o.h/2,o.w,o.h);
+  ctx.fillStyle='rgba(255,50,80,0.08)'; ctx.fill();
+  ctx.strokeStyle='#ff4466'; ctx.lineWidth=2.5; ctx.stroke();
+  // corner decorations
+  const cx=-o.w/2,cy=-o.h/2,cl=10;
+  ctx.shadowBlur=0; ctx.strokeStyle='rgba(255,100,120,0.8)'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(cx,cy+cl); ctx.lineTo(cx,cy); ctx.lineTo(cx+cl,cy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx+o.w-cl,cy); ctx.lineTo(cx+o.w,cy); ctx.lineTo(cx+o.w,cy+cl); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx,cy+o.h-cl); ctx.lineTo(cx,cy+o.h); ctx.lineTo(cx+cl,cy+o.h); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx+o.w-cl,cy+o.h); ctx.lineTo(cx+o.w,cy+o.h); ctx.lineTo(cx+o.w,cy+o.h-cl); ctx.stroke();
+  ctx.restore();
+}
+
+function checkCollision(o){
+  if(invincible) return false;
+  return Math.abs(shipX-o.x)<o.w/2+20 && Math.abs(shipY-o.y)<o.h/2+20;
+}
+
+// ── GAME LOOP ────────────────────────────────────────────────────────────────
+function gameLoop(){
+  if(!gameRunning) return;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='rgba(0,0,20,0.22)'; ctx.fillRect(0,0,W,H);
+
+  if(fingerDetected){ shipX=targetX; shipY=targetY; }
+
+  if(invincible){ invTimer--; if(invTimer<=0) invincible=false; }
+  const alpha = invincible ? (Math.floor(invTimer/6)%2===0 ? 0.25 : 1) : 1;
+  drawShip(shipX,shipY,alpha);
+
+  // Turbo: 2-finger boost
+  let activeSpeed = speedMultiplier;
+  if(turboActive){
+    activeSpeed *= 2.2;
+    turboTimer--;
+    if(turboTimer<=0){ turboActive=false; }
+  }
+  // Flood: 3-finger – spawn very fast
+  if(floodActive){
+    floodTimer--;
+    if(floodTimer<=0){ floodActive=false; }
+  }
+  const effectiveInterval = floodActive ? 12 : spawnInterval;
+
+  spawnTimer++;
+  if(spawnTimer>=effectiveInterval){ spawnObstacle(); spawnTimer=0; }
+
+  if(gestureCooldown>0) gestureCooldown--;
+
+  score+=0.03*activeSpeed;
+  scoreEl.textContent=Math.floor(score);
+  speedMultiplier=Math.min(1+Math.floor(score/200)*0.25, 4);
+  spawnInterval=Math.max(35,90-Math.floor(score/100)*5);
+  speedEl.textContent = turboActive
+    ? '🔥 TURBO!'
+    : (floodActive ? '💥 BÙNG NỔ' : speedMultiplier.toFixed(2)+'x');
+
+  obstacles=obstacles.filter(o=>{
+    o.y+=o.speed*speedMultiplier; o.rot+=o.rotSpeed;
+    drawObstacle(o);
+    if(checkCollision(o)){
+      lives--; livesEl.textContent=lives;
+      invincible=true; invTimer=90;
+      if(lives<=0){ endGame(); return false; }
+      return false;
+    }
+    return o.y<H+80;
+  });
+  animId=requestAnimationFrame(gameLoop);
+}
+
+function endGame(){
+  gameRunning=false; cancelAnimationFrame(animId);
+  finalScoreEl.textContent=Math.floor(score);
+  gameoverDiv.style.display='flex';
+}
+
+function startGame(){
+  score=0; lives=3; obstacles=[];
+  spawnTimer=0; spawnInterval=90; speedMultiplier=1; invincible=false;
+  shipX=W/2; shipY=H*0.7; targetX=W/2; targetY=H*0.7;
+  scoreEl.textContent='0'; livesEl.textContent='3'; speedEl.textContent='1x';
+  gameoverDiv.style.display='none';
+  gameRunning=true;
+  animId=requestAnimationFrame(gameLoop);
+}
+
+// ── MEDIAPIPE HAND TRACKING ──────────────────────────────────────────────────
+const prevVideo   = document.getElementById('prev-video');
+const prevCanvas  = document.getElementById('prev-canvas');
+const prevCtx     = prevCanvas.getContext('2d');
+const camPreview  = document.getElementById('cam-preview');
+const confWrap    = document.getElementById('conf-bar-wrap');
+const confFill    = document.getElementById('conf-bar-fill');
+const confPct     = document.getElementById('conf-pct');
+
+// Smoothed position (EMA filter to reduce jitter)
+let smoothX = 0, smoothY = 0;
+const SMOOTH = 0.25;
+
+// Confidence system
+let confScore = 0;
+const CONF_UP   = 18;
+const CONF_DOWN = 12;
+const CONF_THRESHOLD = 40;
+
+/**
+ * Count how many fingers are extended – robust multi-point method.
+ *
+ * Thumb  : extended when tip (4) is clearly to the LEFT of IP (2) in mirrored space.
+ * Index  : tip(8)  above PIP(6)  by ≥0.02  AND above MCP(5)  by ≥0.05
+ * Middle : tip(12) above PIP(10) by ≥0.02  AND above MCP(9)  by ≥0.05
+ * Ring   : tip(16) above PIP(14) by ≥0.025 AND above MCP(13) by ≥0.05
+ * Pinky  : tip(20) above PIP(18) by ≥0.015 AND above MCP(17) by ≥0.04
+ *          (pinky is shorter so uses looser thresholds on pip but still needs MCP check)
+ */
+function countExtendedFingers(lm){
+  let count = 0;
+
+  // Thumb: compare X (camera is mirrored – right hand: tip.x < IP.x means extended)
+  const thumbDx = lm[2].x - lm[4].x;
+  if(thumbDx > 0.04) count++;
+
+  // Index
+  const iAbovePIP = lm[6].y  - lm[8].y;
+  const iAboveMCP = lm[5].y  - lm[8].y;
+  if(iAbovePIP > 0.02 && iAboveMCP > 0.05) count++;
+
+  // Middle
+  const mAbovePIP = lm[10].y - lm[12].y;
+  const mAboveMCP = lm[9].y  - lm[12].y;
+  if(mAbovePIP > 0.02 && mAboveMCP > 0.05) count++;
+
+  // Ring
+  const rAbovePIP = lm[14].y - lm[16].y;
+  const rAboveMCP = lm[13].y - lm[16].y;
+  if(rAbovePIP > 0.025 && rAboveMCP > 0.05) count++;
+
+  // Pinky – shorter finger: stricter PIP threshold relative to finger length
+  const pAbovePIP = lm[18].y - lm[20].y;
+  const pAboveMCP = lm[17].y - lm[20].y;
+  // Extra: pinky tip must also be above the ring PIP to avoid false positives
+  const pAboveRingPIP = lm[14].y - lm[20].y;
+  if(pAbovePIP > 0.015 && pAboveMCP > 0.04 && pAboveRingPIP > -0.01) count++;
+
+  return count;
+}
+
+/**
+ * Robust index-finger extension score (0-100).
+ * A) Tip (8) above PIP (6)   → 0-40
+ * B) Tip (8) above MCP (5)   → 0-35
+ * C) Index higher than middle → 0-25
+ */
+function indexExtensionScore(lm){
+  let score = 0;
+  const aPIP = lm[6].y - lm[8].y;
+  if(aPIP > 0.04) score += 40; else if(aPIP > 0.01) score += 20;
+  const aMCP = lm[5].y - lm[8].y;
+  if(aMCP > 0.10) score += 35; else if(aMCP > 0.05) score += 15;
+  const diff = lm[12].y - lm[8].y;
+  if(diff > 0.02) score += 25; else if(diff > -0.01) score += 10;
+  return score;
+}
+
+/** Handle special multi-finger gestures */
+function handleGesture(count){
+  if(gestureCooldown > 0 || !gameRunning) return;
+  const g = String(count);
+  if(g === lastGesture) return; // already triggered this gesture
+  lastGesture = g;
+  gestureCooldown = 50; // ~50 frames before next gesture
+
+  if(count === 5){
+    // ✋ Clear all obstacles
+    obstacles = [];
+    showToast('✋ XÓA SẠCH chướng ngại vật!', '#00ff88');
+  } else if(count === 2){
+    // ✌️ Turbo boost
+    turboActive = true;
+    turboTimer  = 120; // ~2s at 60fps
+    showToast('✌️ TURBO! Tốc độ x2!', '#ffcc00');
+  } else if(count === 3){
+    // 🤟 Flood obstacles
+    floodActive = true;
+    floodTimer  = 150;
+    showToast('🤟 BÙNG NỔ! Chướng ngại vật tràn ngập!', '#ff6688');
+  }
+}
+
+/**
+ * Draw hand skeleton on preview canvas.
+ * Connections matching MediaPipe HAND_CONNECTIONS.
+ */
+const CONNECTIONS = [
+  [0,1],[1,2],[2,3],[3,4],       // thumb
+  [0,5],[5,6],[6,7],[7,8],       // index
+  [5,9],[9,10],[10,11],[11,12],  // middle
+  [9,13],[13,14],[14,15],[15,16],// ring
+  [13,17],[17,18],[18,19],[19,20],// pinky
+  [0,17]
+];
+
+function drawSkeleton(lm, extScore){
+  const pw = prevCanvas.width, ph = prevCanvas.height;
+  prevCtx.clearRect(0,0,pw,ph);
+
+  // Color: green if detected, yellow if partial, red if none
+  const lineColor = extScore>=CONF_THRESHOLD ? '#00ff88'
+                  : extScore>=20             ? '#ffcc00'
+                  : '#ff4466';
+
+  // Draw connections
+  prevCtx.strokeStyle = lineColor+'99';
+  prevCtx.lineWidth = 1.5;
+  CONNECTIONS.forEach(([a,b])=>{
+    prevCtx.beginPath();
+    // Note: canvas is css-flipped scaleX(-1), so draw normally in raw coords
+    prevCtx.moveTo(lm[a].x*pw, lm[a].y*ph);
+    prevCtx.lineTo(lm[b].x*pw, lm[b].y*ph);
+    prevCtx.stroke();
+  });
+
+  // Draw landmark dots
+  lm.forEach((p,i)=>{
+    prevCtx.beginPath();
+    prevCtx.arc(p.x*pw, p.y*ph, i===8?5:2.5, 0, Math.PI*2);
+    prevCtx.fillStyle = i===8 ? '#00cfff' : lineColor;
+    prevCtx.fill();
+  });
+
+  // Label index tip
+  prevCtx.fillStyle='#00cfff';
+  prevCtx.font='bold 10px sans-serif';
+  prevCtx.fillText('☝', lm[8].x*pw+6, lm[8].y*ph-4);
+}
+
+function initHandTracking(){
+  // Sync preview video size
+  prevCanvas.width  = 200;
+  prevCanvas.height = 150;
+
+  const hands = new Hands({
+    locateFile: f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`
+  });
+  hands.setOptions({
+    maxNumHands: 1,
+    modelComplexity: 1,
+    minDetectionConfidence: 0.6,
+    minTrackingConfidence: 0.5
+  });
+
+  hands.onResults(results=>{
+    prevCtx.clearRect(0,0,prevCanvas.width,prevCanvas.height);
+
+    if(results.multiHandLandmarks && results.multiHandLandmarks.length>0){
+      const lm       = results.multiHandLandmarks[0];
+      const extScore = indexExtensionScore(lm);
+      const numFing  = countExtendedFingers(lm);
+
+      // Draw skeleton on preview
+      drawSkeleton(lm, extScore);
+
+      // ── Multi-finger gesture detection ───────────────────────────────────
+      if(numFing >= 2) handleGesture(numFing);
+      else if(numFing <= 1) lastGesture = ''; // reset so gestures re-trigger
+
+      // ── Confidence for 1-finger (index) tracking ─────────────────────────
+      if(numFing === 1 && extScore >= 50){
+        confScore = Math.min(100, confScore + CONF_UP);
+      } else if(numFing >= 2){
+        // Multi-finger: keep ship at last position, keep confidence
+        confScore = Math.max(0, confScore - 4);
+      } else {
+        confScore = Math.max(0, confScore - CONF_DOWN);
+      }
+
+      confFill.style.width = confScore+'%';
+      confPct.textContent  = confScore+'%';
+
+      if(confScore >= CONF_THRESHOLD){
+        const rawX = (1 - lm[8].x) * W;
+        const rawY = lm[8].y * H;
+        if(smoothX===0){ smoothX=rawX; smoothY=rawY; }
+        smoothX += (rawX - smoothX) * SMOOTH;
+        smoothY += (rawY - smoothY) * SMOOTH;
+        targetX = smoothX;
+        targetY = smoothY;
+
+        fingerDot.style.left = targetX+'px';
+        fingerDot.style.top  = targetY+'px';
+        fingerDot.style.display = numFing===1 ? 'block' : 'none';
+        fingerDetected = (numFing===1);
+      } else {
+        fingerDetected=false;
+        fingerDot.style.display='none';
+      }
+    } else {
+      // No hand detected
+      confScore = Math.max(0, confScore - CONF_DOWN*2);
+      confFill.style.width = confScore+'%';
+      confPct.textContent  = confScore+'%';
+      fingerDetected=false;
+      lastGesture='';
+      fingerDot.style.display='none';
+    }
+  });
+
+  const mpCamera = new Camera(camVideo,{
+    onFrame: async()=>{ await hands.send({image:camVideo}); },
+    width:640, height:480
+  });
+  mpCamera.start().then(()=>{
+    if(camVideo.srcObject){
+      camBg.srcObject    = camVideo.srcObject;
+      prevVideo.srcObject = camVideo.srcObject;
+    }
+  });
+}
+
+// ── LAUNCH ───────────────────────────────────────────────────────────────────
+startBtn.addEventListener('click', ()=>{
+  uiOverlay.style.opacity='0';
+  setTimeout(()=>{ uiOverlay.style.display='none'; }, 550);
+
+  camBg.style.display='block';
+  gameContainer.style.display='block';
+  hud.style.display='flex';
+  camPreview.style.display='block';
+  confWrap.style.display='block';
+
+  resize();
+  startGame();
+  initHandTracking();
+});
+
+restartBtn.addEventListener('click', ()=>{ startGame(); });
+window.addEventListener('resize', resize);
+</script>
+</body>
+</html>
