@@ -1,14 +1,187 @@
-
 <!DOCTYPE html>
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chi2010</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#08091f">
+  <title>Thiệp 20/10 – Gửi Nguyễn Thùy Chi</title>
+  <style>
+    :root{--pink:#ff3cb4;--soft:#ffd2e6;--lav:#b48cff;--gold:#ffd732}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;color:white;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:linear-gradient(180deg,#050819,#10102e 55%,#1c1037);overflow-x:hidden}
+    #sky{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+    .wrap{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 14px}
+    .intro{text-align:center;margin-bottom:18px;animation:fadein 1.2s ease both}
+    .intro .eyebrow{color:#ffd2e6;letter-spacing:.18em;text-transform:uppercase;font-size:.76rem}
+    h1{margin:8px 0;font-size:clamp(1.6rem,5vw,2.8rem);line-height:1.15;color:#ffd9eb;text-shadow:0 0 18px #ff3cb477}
+    .intro p{margin:8px 0;color:#c9c5f5}
+    .card{width:min(640px,100%);position:relative;border:2px solid #ff64c8;border-radius:24px;overflow:hidden;background:linear-gradient(145deg,#19102fef,#23143eef);box-shadow:0 0 12px #ff3cb455,0 0 36px #ff3cb422;animation:float 4s ease-in-out infinite}
+    .card-head{padding:16px 20px;text-align:center;background:linear-gradient(110deg,#ff3cb4,#c82878);font-weight:750;font-size:clamp(.9rem,3vw,1.1rem)}
+    .card-body{padding:24px clamp(18px,5vw,36px) 16px;min-height:300px}
+    #letter{white-space:pre-wrap;line-height:1.85;font-size:clamp(.95rem,2.6vw,1.1rem);color:var(--soft);min-height:230px}
+    #letter .first{color:#ff74ce;font-weight:700}
+    #letter .special{color:#c9a8ff}
+    .cursor{display:inline-block;width:.65em;animation:blink .75s steps(1) infinite;color:white}
+    .sign{border-top:1px solid #ffd2e633;text-align:center;padding:20px 12px 24px;color:var(--gold);font-weight:750;font-size:1.08rem;text-shadow:0 0 12px #ffbe00}
+    .decor{position:absolute;font-size:1.45rem;filter:drop-shadow(0 0 6px #ff8ccc);animation:bob 2.8s ease-in-out infinite;pointer-events:none}
+    .d1{top:65px;left:15px}.d2{top:65px;right:15px;animation-delay:.4s}.d3{bottom:55px;left:15px;animation-delay:.8s}.d4{bottom:55px;right:15px;animation-delay:1.2s}
+    .actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:18px}
+    button{border:1px solid #ff83d0;border-radius:999px;padding:11px 17px;background:#29143e;color:#fff;font-weight:650;cursor:pointer;transition:transform .2s,background .2s}
+    button:hover{background:#56205b;transform:translateY(-2px)}button:focus-visible{outline:3px solid #ffd732;outline-offset:3px}
+    .hint{font-size:.85rem;color:#bdb7e8;text-align:center;margin:14px 0 0}
+    #rain{position:fixed;inset:0;z-index:2;pointer-events:none;overflow:hidden;display:none}
+    #rain.active{display:block}
+    .drop{position:absolute;top:-40px;animation:fall linear forwards;opacity:.95;filter:drop-shadow(0 0 5px #ff67c6)}
+    footer{position:relative;z-index:1;text-align:center;color:#9d98c9;font-size:.75rem;padding:0 12px 18px}
+    @keyframes blink{50%{opacity:0}}@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}@keyframes bob{0%,100%{transform:translateY(0) rotate(-5deg)}50%{transform:translateY(-8px) rotate(5deg)}}@keyframes fall{to{transform:translateY(115vh) rotate(360deg);opacity:.2}}@keyframes fadein{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important}}
+  </style>
 </head>
 <body>
-  <h1>Chi2010</h1>
-  <p>Website của mình đang được xây dựng!</p>
+  <canvas id="sky" aria-hidden="true"></canvas>
+  <div id="rain" aria-hidden="true"></div>
+  <main class="wrap">
+    <header class="intro">
+      <div class="eyebrow">Một món quà nhỏ ngày 20/10</div>
+      <h1>🌸 Thiệp 20/10 🌸</h1>
+      <p>Gửi Nguyễn Thùy Chi — từ Huy</p>
+    </header>
+    <article class="card" aria-label="Thiệp chúc mừng 20 tháng 10">
+      <div class="card-head" id="letterTitle">💌 Gửi Nguyễn Thùy Chi — Yêu của anh 💌</div>
+      <span class="decor d1">🐰</span><span class="decor d2">🐱</span><span class="decor d3">🦭</span><span class="decor d4">🍰</span>
+      <div class="card-body"><div id="letter" aria-live="polite"></div></div>
+      <div class="sign" id="sign">🌻 Anh iu e — Huy đen da 🌻</div>
+    </article>
+    <div class="actions">
+      <button id="skip" type="button">Hiện toàn bộ lời chúc</button>
+      <button id="rainBtn" type="button" aria-pressed="false">Bật mưa tình yêu 💖</button>
+      <button id="replay" type="button">Đọc lại thiệp ↻</button>
+    </div>
+    <p class="hint">Chạm “Bật mưa tình yêu” để xem hiệu ứng trái tim và hoa rơi.</p>
+  </main>
+  <footer>Được làm bằng sự chân thành dành cho ngày 20/10.</footer>
+  <script>
+    (() => {
+      const lines = [
+        "Yêu của anh 🌸",
+        "",
+        "20-10 vui vẻ nhoa, chúc em học giỏi,",
+        "đẹp mãi, luôn cười và đừng nhịn ăn,",
+        "ngủ muộn nhiều nhé. 🐰🐱",
+        "",
+        "20-10 vui vẻ nha nha nha nha nha ha 🌻💖",
+        "",
+        "Em là điều tuyệt vời nhất",
+        "mà anh có trong cuộc đời này. 💌"
+      ];
+      const title = "💌 Gửi Nguyễn Thùy Chi — Yêu của anh 💌";
+      const signText = "— Anh iu e — Huy đen da —";
+      const letter = document.getElementById("letter");
+      const titleEl = document.getElementById("letterTitle");
+      const sign = document.getElementById("sign");
+      const skip = document.getElementById("skip");
+      const replay = document.getElementById("replay");
+      const rainBtn = document.getElementById("rainBtn");
+      const rain = document.getElementById("rain");
+      let timer = null, complete = false, rainTimer = null;
+
+      function renderText(text, target) {
+        target.textContent = text;
+      }
+      function showAll() {
+        clearInterval(timer); timer = null; complete = true;
+        renderText(title, titleEl);
+        letter.innerHTML = "";
+        lines.forEach((line, i) => {
+          const span = document.createElement("span");
+          span.textContent = line || "\u00a0";
+          if (i === 0) span.className = "first";
+          else if (line.includes("💌") || line.includes("anh")) span.className = "special";
+          letter.appendChild(span);
+          if (i < lines.length - 1) letter.appendChild(document.createElement("br"));
+        });
+        renderText(signText, sign);
+      }
+      function startTypewriter() {
+        clearInterval(timer); complete = false;
+        titleEl.textContent = ""; letter.textContent = ""; sign.textContent = "";
+        const fullTitle = title;
+        let i = 0, phase = 0, lineIndex = 0, charIndex = 0;
+        timer = setInterval(() => {
+          if (phase === 0) {
+            titleEl.textContent = fullTitle.slice(0, ++i);
+            if (i >= fullTitle.length) { phase = 1; i = 0; }
+          } else if (phase === 1) {
+            if (lineIndex >= lines.length) { phase = 2; i = 0; return; }
+            if (charIndex < lines[lineIndex].length) {
+              const span = document.createElement("span");
+              span.textContent = lines[lineIndex][charIndex++];
+              if (lineIndex === 0) span.className = "first";
+              else if (lines[lineIndex].includes("💌") || lines[lineIndex].includes("anh")) span.className = "special";
+              letter.appendChild(span);
+            } else {
+              letter.appendChild(document.createElement("br"));
+              lineIndex++; charIndex = 0;
+            }
+          } else {
+            sign.textContent = signText.slice(0, ++i);
+            if (i >= signText.length) { clearInterval(timer); timer = null; complete = true; }
+          }
+        }, 38);
+      }
+      skip.addEventListener("click", showAll);
+      replay.addEventListener("click", startTypewriter);
+      rainBtn.addEventListener("click", () => {
+        const active = rain.classList.toggle("active");
+        rainBtn.setAttribute("aria-pressed", String(active));
+        rainBtn.textContent = active ? "Tắt mưa tình yêu 💖" : "Bật mưa tình yêu 💖";
+        if (active) {
+          const symbols = ["💖","💕","🌸","🌻","✨","💗"];
+          rainTimer = setInterval(() => {
+            if (rain.childElementCount > 65) rain.firstElementChild?.remove();
+            const d = document.createElement("span");
+            d.className = "drop";
+            d.textContent = symbols[Math.floor(Math.random()*symbols.length)];
+            d.style.left = Math.random()*100 + "%";
+            d.style.fontSize = (16 + Math.random()*20) + "px";
+            d.style.animationDuration = (4 + Math.random()*5) + "s";
+            rain.appendChild(d);
+            d.addEventListener("animationend", () => d.remove(), {once:true});
+          }, 180);
+        } else { clearInterval(rainTimer); rainTimer = null; rain.replaceChildren(); }
+      });
+
+      // Star field behind the card
+      const canvas = document.getElementById("sky"), ctx = canvas.getContext("2d");
+      let w, h, stars = [], raf;
+      function resize() {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        w = window.innerWidth; h = window.innerHeight;
+        canvas.width = Math.floor(w*dpr); canvas.height = Math.floor(h*dpr);
+        canvas.style.width = w+"px"; canvas.style.height = h+"px";
+        ctx.setTransform(dpr,0,0,dpr,0,0);
+        stars = Array.from({length: Math.min(180, Math.floor(w*h/5000))}, () => ({
+          x:Math.random()*w,y:Math.random()*h,r:.5+Math.random()*1.8,
+          speed:.15+Math.random()*.6,phase:Math.random()*Math.PI*2,
+          color:["#fff","#ffb6d2","#8cc8ff","#b48cff","#ffd732"][Math.floor(Math.random()*5)]
+        }));
+      }
+      let tick = 0;
+      function draw() {
+        ctx.clearRect(0,0,w,h); tick += .016;
+        for (const s of stars) {
+          ctx.globalAlpha = .3 + .7*(.5+.5*Math.sin(tick*s.speed*3+s.phase));
+          ctx.fillStyle = s.color; ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill();
+        }
+        ctx.globalAlpha = 1; raf = requestAnimationFrame(draw);
+      }
+      window.addEventListener("resize", resize);
+      resize(); draw(); startTypewriter();
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden && raf) cancelAnimationFrame(raf);
+        else if (!document.hidden) draw();
+      });
+    })();
+  </script>
 </body>
 </html>
-
