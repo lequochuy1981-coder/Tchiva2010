@@ -990,6 +990,485 @@ class MatrixColumn:
                     surface.blit(glow_s, (self.x - 5, int(char_y) - 5))
 
 # ============================================================
+#  SCENE 3.5: GIFT BOX IN DARKNESS → 3D ROSE
+# ============================================================
+
+# --- Sparkle particle for rose scene ---
+class RoseSparkle:
+    def __init__(self, cx, cy, radius=0):
+        angle = random.uniform(0, math.pi * 2)
+        dist = random.uniform(0, radius) if radius > 0 else random.uniform(50, 220)
+        self.x = cx + math.cos(angle) * dist
+        self.y = cy + math.sin(angle) * dist
+        self.vx = math.cos(angle) * random.uniform(0.5, 2.5)
+        self.vy = math.sin(angle) * random.uniform(0.5, 2.5) - random.uniform(1, 3)
+        self.life = 1.0
+        self.decay = random.uniform(0.008, 0.025)
+        self.size = random.randint(2, 6)
+        self.color = random.choice([
+            (255, 215, 0), (255, 255, 200), (255, 180, 230),
+            (255, 100, 180), (200, 255, 255), (255, 255, 255)
+        ])
+
+    def update(self):
+        self.x += self.vx
+        self.y += self.vy
+        self.vy += 0.04
+        self.life -= self.decay
+        return self.life > 0
+
+    def draw(self, surface):
+        if self.life <= 0:
+            return
+        alpha = int(self.life * 255)
+        s = pygame.Surface((self.size * 2 + 2, self.size * 2 + 2), pygame.SRCALPHA)
+        pygame.draw.circle(s, (*self.color, alpha), (self.size + 1, self.size + 1), self.size)
+        surface.blit(s, (int(self.x - self.size - 1), int(self.y - self.size - 1)))
+
+
+def draw_gift_box(surface, cx, cy, size, t, reveal_progress=0.0):
+    """Draw an animated colorful gift box emerging from darkness."""
+    # Oscillating colors for ribbons and decorations
+    rainbow_colors = [
+        (255, 80, 80),   (255, 165, 0),  (255, 230, 0),
+        (80, 255, 120),  (80, 180, 255), (180, 80, 255),
+        (255, 80, 200),
+    ]
+
+    bw = int(size * 1.4)   # box width
+    bh = int(size * 1.2)   # box height
+    lid_h = int(size * 0.35)
+    bx = cx - bw // 2
+    by = cy - bh // 2
+
+    # Floating bob
+    bob = math.sin(t * 2) * 6 * reveal_progress
+    by = int(by + bob)
+
+    # ---- SHADOW ----
+    shadow_alpha = int(60 * reveal_progress)
+    if shadow_alpha > 0:
+        sh_s = pygame.Surface((bw + 40, 30), pygame.SRCALPHA)
+        pygame.draw.ellipse(sh_s, (0, 0, 0, shadow_alpha), (0, 0, bw + 40, 30))
+        surface.blit(sh_s, (bx - 20, cy + bh // 2 + 15))
+
+    # ---- BOX BODY ----
+    # Animated gradient body - cycling colors
+    color_idx = int(t * 0.8) % len(rainbow_colors)
+    box_col1 = rainbow_colors[color_idx]
+    box_col2 = rainbow_colors[(color_idx + 2) % len(rainbow_colors)]
+    box_col3 = rainbow_colors[(color_idx + 4) % len(rainbow_colors)]
+
+    # Draw box body with vertical color bands
+    band_w = bw // 3
+    for i, col in enumerate([box_col1, box_col2, box_col3]):
+        bnd_x = bx + i * band_w
+        bnd_actual_w = band_w if i < 2 else bw - 2 * band_w
+        # Make slightly lighter version
+        lighter = tuple(min(255, int(c * 1.3)) for c in col)
+        box_rect = pygame.Rect(bnd_x, by + lid_h, bnd_actual_w, bh - lid_h)
+        pygame.draw.rect(surface, col, box_rect)
+        # Shine highlight on top portion
+        shine_s = pygame.Surface((bnd_actual_w, (bh - lid_h) // 3), pygame.SRCALPHA)
+        for yy in range((bh - lid_h) // 3):
+            a = int(60 * (1 - yy / max(1, (bh - lid_h) // 3)))
+            pygame.draw.line(shine_s, (255, 255, 255, a), (0, yy), (bnd_actual_w, yy))
+        surface.blit(shine_s, (bnd_x, by + lid_h))
+
+    # Box border
+    pygame.draw.rect(surface, (255, 255, 255), (bx, by + lid_h, bw, bh - lid_h), 3, border_radius=4)
+
+    # ---- LID ----
+    lid_col = rainbow_colors[(color_idx + 1) % len(rainbow_colors)]
+    lid_rect = pygame.Rect(bx - 8, by, bw + 16, lid_h)
+    pygame.draw.rect(surface, lid_col, lid_rect, border_radius=6)
+    pygame.draw.rect(surface, (255, 255, 255), lid_rect, 3, border_radius=6)
+    # Lid shine
+    lid_shine = pygame.Surface((bw + 16, lid_h // 2), pygame.SRCALPHA)
+    for yy in range(lid_h // 2):
+        a = int(80 * (1 - yy / max(1, lid_h // 2)))
+        pygame.draw.line(lid_shine, (255, 255, 255, a), (0, yy), (bw + 16, yy))
+    surface.blit(lid_shine, (bx - 8, by))
+
+    # ---- VERTICAL RIBBON ----
+    ribbon_w = int(size * 0.1)
+    ribbon_col = rainbow_colors[(color_idx + 3) % len(rainbow_colors)]
+    pygame.draw.rect(surface, ribbon_col, (cx - ribbon_w // 2, by, ribbon_w, bh))
+    pygame.draw.rect(surface, (255, 255, 255), (cx - ribbon_w // 2, by, ribbon_w, bh), 1)
+
+    # ---- HORIZONTAL RIBBON ----
+    pygame.draw.rect(surface, ribbon_col, (bx, by + bh // 2 - ribbon_w // 2, bw, ribbon_w))
+    pygame.draw.rect(surface, (255, 255, 255), (bx, by + bh // 2 - ribbon_w // 2, bw, ribbon_w), 1)
+
+    # ---- BOW on top ----
+    bow_col = rainbow_colors[(color_idx + 5) % len(rainbow_colors)]
+    bow_col2 = rainbow_colors[(color_idx + 6) % len(rainbow_colors)]
+    bow_cx, bow_cy = cx, by + 4
+    bow_phase = math.sin(t * 3) * 0.1
+
+    # Left loop
+    pts_l = []
+    for i in range(20):
+        angle = math.pi + i * math.pi / 19 + bow_phase
+        r = int(size * 0.32)
+        pts_l.append((int(bow_cx - r * 0.5 + math.cos(angle) * r * 0.9),
+                      int(bow_cy + math.sin(angle) * r * 0.55)))
+    if len(pts_l) > 2:
+        pygame.draw.polygon(surface, bow_col, pts_l)
+        pygame.draw.polygon(surface, (255, 255, 255), pts_l, 2)
+    # Right loop
+    pts_r = []
+    for i in range(20):
+        angle = i * math.pi / 19 - bow_phase
+        r = int(size * 0.32)
+        pts_r.append((int(bow_cx + r * 0.5 + math.cos(angle) * r * 0.9),
+                      int(bow_cy + math.sin(angle) * r * 0.55)))
+    if len(pts_r) > 2:
+        pygame.draw.polygon(surface, bow_col2, pts_r)
+        pygame.draw.polygon(surface, (255, 255, 255), pts_r, 2)
+    # Bow center knot
+    pygame.draw.circle(surface, rainbow_colors[(color_idx + 4) % len(rainbow_colors)], (bow_cx, bow_cy), int(size * 0.1))
+    pygame.draw.circle(surface, (255, 255, 255), (bow_cx, bow_cy), int(size * 0.1), 2)
+
+    # ---- STAR DECORATIONS on box ----
+    for i in range(6):
+        star_angle = i * math.pi / 3 + t * 1.5
+        star_r = int(size * 0.38)
+        sx = cx + int(math.cos(star_angle) * star_r * 0.65)
+        sy = cy + int(math.sin(star_angle) * star_r * 0.4) + lid_h // 2
+        star_col = rainbow_colors[(color_idx + i) % len(rainbow_colors)]
+        star_alpha = int(abs(math.sin(t * 3 + i)) * 220 + 35)
+        draw_star(surface, sx, sy, int(size * 0.08) + 2, star_col, star_alpha)
+
+    # ---- SPARKLE RING around box ----
+    for i in range(12):
+        sp_angle = i * math.pi / 6 + t * 2
+        sp_r = bw * 0.7 + math.sin(t * 4 + i) * 10
+        spx = cx + int(math.cos(sp_angle) * sp_r)
+        spy = cy + int(math.sin(sp_angle) * sp_r * 0.55)
+        sp_col = rainbow_colors[i % len(rainbow_colors)]
+        sp_alpha = int(abs(math.sin(t * 5 + i * 0.8)) * 200)
+        if sp_alpha > 30:
+            draw_star(surface, spx, spy, 4, sp_col, sp_alpha)
+
+
+def draw_3d_rose(surface, cx, cy, t, scale=1.0, bloom_progress=1.0):
+    """Draw a beautiful 3D-style rose with halo and sparkling ring."""
+    # Colors
+    ROSE_DEEP   = (180, 20, 60)
+    ROSE_MID    = (220, 50, 90)
+    ROSE_BRIGHT = (255, 100, 130)
+    ROSE_LIGHT  = (255, 160, 180)
+    ROSE_EDGE   = (255, 200, 210)
+    LEAF_DARK   = (30, 100, 40)
+    LEAF_MID    = (60, 150, 60)
+    LEAF_LIGHT  = (100, 200, 80)
+
+    bp = bloom_progress  # 0→1
+
+    # ---- OUTER HALO / AURA ----
+    halo_layers = [
+        (int(220 * scale * bp), (255, 120, 160, 8)),
+        (int(170 * scale * bp), (255, 150, 180, 14)),
+        (int(130 * scale * bp), (255, 180, 200, 20)),
+        (int(100 * scale * bp), (255, 200, 220, 28)),
+        (int(75 * scale * bp),  (255, 220, 235, 38)),
+    ]
+    halo_pulse = math.sin(t * 1.5) * 0.12 + 1.0
+    for radius, color in halo_layers:
+        r_pulsed = int(radius * halo_pulse)
+        if r_pulsed > 0:
+            h_s = pygame.Surface((r_pulsed * 2 + 4, r_pulsed * 2 + 4), pygame.SRCALPHA)
+            pygame.draw.circle(h_s, color, (r_pulsed + 2, r_pulsed + 2), r_pulsed)
+            surface.blit(h_s, (cx - r_pulsed - 2, cy - r_pulsed - 2))
+
+    # ---- STEM ----
+    stem_len = int(130 * scale * bp)
+    stem_w = max(2, int(8 * scale))
+    if stem_len > 5:
+        stem_sway = math.sin(t * 1.2) * 6 * scale
+        pygame.draw.line(surface, LEAF_DARK,
+                         (cx, cy + int(50 * scale)),
+                         (int(cx + stem_sway), cy + int(50 * scale) + stem_len), stem_w + 2)
+        pygame.draw.line(surface, LEAF_MID,
+                         (cx, cy + int(50 * scale)),
+                         (int(cx + stem_sway), cy + int(50 * scale) + stem_len), stem_w - 1)
+
+    # ---- LEAVES ----
+    leaf_base_y = cy + int(100 * scale * bp)
+    leaf_sway = math.sin(t * 1.5) * 4 * scale
+    for side in [-1, 1]:
+        lx = cx + side * int(30 * scale * bp)
+        ly = leaf_base_y
+        pts = []
+        for i in range(16):
+            angle = i * math.pi / 15
+            r = int(45 * scale * bp)
+            pts.append((int(lx + side * math.cos(angle) * r * 1.1 + leaf_sway),
+                        int(ly + math.sin(angle) * r * 0.5)))
+        pts += [(lx, ly)]
+        if len(pts) > 2:
+            pygame.draw.polygon(surface, LEAF_MID, pts)
+            pygame.draw.polygon(surface, LEAF_DARK, pts, 2)
+        # Leaf vein
+        pygame.draw.line(surface, LEAF_LIGHT,
+                         (lx, ly),
+                         (int(lx + side * 40 * scale * bp + leaf_sway), int(ly - 15 * scale * bp)), 2)
+
+    # ---- PETALS (multiple layers, 3D effect) ----
+    petal_layers = [
+        # (num_petals, petal_radius, petal_spread_r, color, angle_offset)
+        (5, int(70 * scale * bp), int(48 * scale * bp), ROSE_DEEP, 0),
+        (6, int(60 * scale * bp), int(38 * scale * bp), ROSE_MID, math.pi / 6),
+        (6, int(48 * scale * bp), int(28 * scale * bp), ROSE_BRIGHT, 0),
+        (5, int(36 * scale * bp), int(18 * scale * bp), ROSE_LIGHT, math.pi / 5),
+        (4, int(24 * scale * bp), int(10 * scale * bp), ROSE_EDGE, math.pi / 8),
+    ]
+
+    rose_sway = math.sin(t * 1.3) * 3 * scale
+
+    for num_petals, petal_r, spread_r, col, ang_off in petal_layers:
+        if petal_r < 3:
+            continue
+        for i in range(num_petals):
+            base_angle = i * (2 * math.pi / num_petals) + ang_off + t * 0.3
+            # Petal center
+            pcx = cx + int(math.cos(base_angle) * spread_r + rose_sway)
+            pcy = cy + int(math.sin(base_angle) * spread_r * 0.6)
+
+            # Draw elliptical petal
+            petal_surf = pygame.Surface((petal_r * 2 + 4, petal_r * 2 + 4), pygame.SRCALPHA)
+            # Gradient petal: lighter at tip
+            for rr in range(petal_r, 0, -1):
+                ratio = rr / petal_r
+                pr = min(255, int(col[0] + (255 - col[0]) * (1 - ratio) * 0.5))
+                pg = min(255, int(col[1] + (255 - col[1]) * (1 - ratio) * 0.5))
+                pb = min(255, int(col[2] + (255 - col[2]) * (1 - ratio) * 0.5))
+                pa = int(230 * bp)
+                pygame.draw.ellipse(petal_surf, (pr, pg, pb, pa),
+                                    (petal_r + 2 - rr, petal_r + 2 - int(rr * 0.6),
+                                     rr * 2, int(rr * 1.2)))
+
+            # Rotate petal to face outward
+            angle_deg = math.degrees(base_angle) + 90
+            rotated_petal = pygame.transform.rotate(petal_surf, -angle_deg)
+            rr = rotated_petal.get_rect(center=(pcx, pcy))
+            surface.blit(rotated_petal, rr)
+
+    # ---- CENTER BUD ----
+    bud_r = int(20 * scale * bp)
+    if bud_r > 1:
+        for rr in range(bud_r, 0, -1):
+            ratio = rr / bud_r
+            rc = int(140 + (1 - ratio) * 80)
+            gc = int(20 + (1 - ratio) * 20)
+            bc = int(50 + (1 - ratio) * 30)
+            pygame.draw.circle(surface, (rc, gc, bc), (cx, cy), rr)
+        # Center highlight
+        pygame.draw.circle(surface, (255, 200, 220), (cx - bud_r // 3, cy - bud_r // 3), bud_r // 4)
+
+    # ---- SPARKLING RING ----
+    ring_radius_base = int(90 * scale * bp)
+    ring_count = 24
+    for i in range(ring_count):
+        angle = i * (2 * math.pi / ring_count) + t * 1.8
+        # Two rings
+        for ring_r_mult in [1.0, 1.35]:
+            ring_r = ring_radius_base * ring_r_mult
+            sx = cx + int(math.cos(angle) * ring_r)
+            sy = cy + int(math.sin(angle) * ring_r * 0.55)
+            alpha = int(abs(math.sin(t * 4 + i * 0.5)) * 240 + 15)
+            size_sp = random.choice([3, 4, 5]) if bp > 0.8 else 3
+            col_sp = random.choice([(255, 215, 0), (255, 255, 200), (255, 180, 220), (200, 255, 255)])
+            draw_star(surface, sx, sy, size_sp, col_sp, alpha)
+
+    # ---- SHIMMER / GLITTER ----
+    if bp > 0.5:
+        glitter_r = int(110 * scale * bp)
+        for i in range(18):
+            gangle = t * 2.5 + i * math.pi / 9
+            gr = glitter_r + math.sin(t * 6 + i) * 20 * scale
+            gx = cx + int(math.cos(gangle) * gr)
+            gy = cy + int(math.sin(gangle) * gr * 0.5)
+            g_alpha = int(abs(math.sin(t * 5 + i * 1.2)) * 180)
+            if g_alpha > 20:
+                g_s = pygame.Surface((8, 8), pygame.SRCALPHA)
+                pygame.draw.circle(g_s, (255, 255, 255, g_alpha), (4, 4), 4)
+                surface.blit(g_s, (gx - 4, gy - 4))
+
+
+def draw_scene_giftbox(surface, t, scene_state, rose_sparkles):
+    """
+    scene_state dict keys:
+      'phase': 'darkness' | 'reveal' | 'open' | 'rose'
+      'reveal_t': time when reveal started
+      'open_t': time when open started
+      'rose_t': time when rose started
+      'box_reveal': 0→1 float
+      'rose_bloom': 0→1 float
+    """
+    phase = scene_state.get('phase', 'darkness')
+    box_reveal = scene_state.get('box_reveal', 0.0)
+    rose_bloom = scene_state.get('rose_bloom', 0.0)
+    cx, cy = SCREEN_W // 2, SCREEN_H // 2 - 20
+
+    if phase in ('darkness', 'reveal'):
+        # ---- DARK BACKGROUND ----
+        # Very dark background with subtle vignette
+        surface.fill((5, 2, 8))
+        # Subtle nebula glow in center
+        glow_alpha = int(30 + math.sin(t * 0.8) * 15)
+        for rr in [200, 150, 100, 60]:
+            ns = pygame.Surface((rr * 2, rr * 2), pygame.SRCALPHA)
+            pygame.draw.circle(ns, (60, 10, 40, glow_alpha // (rr // 40 + 1)), (rr, rr), rr)
+            surface.blit(ns, (cx - rr, cy - rr))
+        # Floating dust particles
+        random.seed(int(t * 3))
+        for _ in range(20):
+            dx = random.randint(0, SCREEN_W)
+            dy = random.randint(0, SCREEN_H)
+            da = random.randint(10, 50)
+            ds = random.randint(1, 3)
+            pygame.draw.circle(surface, (255, 200, 220), (dx, dy), ds)
+        random.seed()
+
+        # ---- SPOTLIGHT ----
+        spot_alpha = int(box_reveal * 200)
+        if spot_alpha > 0:
+            for sr in [300, 220, 150, 90]:
+                spot_s = pygame.Surface((sr * 2, sr * 2), pygame.SRCALPHA)
+                base_a = int((sr / 300) * spot_alpha * 0.3)
+                pygame.draw.circle(spot_s, (255, 240, 200, base_a), (sr, sr), sr)
+                surface.blit(spot_s, (cx - sr, cy - sr - 20))
+
+        # Draw gift box
+        if box_reveal > 0.01:
+            # Clip alpha for fade-in
+            box_surf = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
+            draw_gift_box(box_surf, cx, cy, 120, t, box_reveal)
+            box_surf.set_alpha(int(box_reveal * 255))
+            surface.blit(box_surf, (0, 0))
+
+        # ---- OPEN BUTTON ----
+        if box_reveal >= 1.0:
+            btn_w, btn_h = 220, 60
+            btn_x = (SCREEN_W - btn_w) // 2
+            btn_y = cy + 165
+            pulse = math.sin(t * 3) * 5
+
+            # Glow
+            gw_s = pygame.Surface((btn_w + 60, btn_h + 60), pygame.SRCALPHA)
+            gw_a = int(60 + math.sin(t * 2) * 30)
+            pygame.draw.rect(gw_s, (255, 100, 200, gw_a), (0, 0, btn_w + 60, btn_h + 60), border_radius=35)
+            surface.blit(gw_s, (btn_x - 30, btn_y - 30))
+
+            # Shadow
+            pygame.draw.rect(surface, (100, 20, 60),
+                             (btn_x + 3 - pulse, btn_y + 4 - pulse / 2, btn_w + pulse * 2, btn_h + pulse),
+                             border_radius=32)
+            # Button
+            btn_rect = pygame.Rect(btn_x - pulse, btn_y - pulse / 2, btn_w + pulse * 2, btn_h + pulse)
+            pygame.draw.rect(surface, CANDY_HOT_PINK, btn_rect, border_radius=32)
+
+            # Shine
+            sh_s = pygame.Surface((int(btn_rect.w - 8), btn_rect.h // 2 - 4), pygame.SRCALPHA)
+            pygame.draw.rect(sh_s, (255, 255, 255, 55), (0, 0, sh_s.get_width(), sh_s.get_height()), border_radius=26)
+            surface.blit(sh_s, (btn_rect.x + 4, btn_rect.y + 4))
+
+            pygame.draw.rect(surface, DARK_PINK, btn_rect, 3, border_radius=32)
+
+            open_font = get_font(30, bold=True)
+            open_txt = open_font.render("🎁  Mở quà!", True, WHITE)
+            open_txt_rect = open_txt.get_rect(center=btn_rect.center)
+            surface.blit(open_txt, open_txt_rect)
+
+            # Sparkles around button
+            for i in range(8):
+                ang = t * 3 + i * math.pi / 4
+                dist = 65 + math.sin(t * 4 + i) * 10
+                spx = btn_rect.centerx + int(math.cos(ang) * dist * 1.6)
+                spy = btn_rect.centery + int(math.sin(ang) * dist * 0.5)
+                sp_alpha = int(abs(math.sin(t * 5 + i)) * 220)
+                draw_star(surface, spx, spy, 5,
+                          [(255, 215, 0), (255, 255, 200), (255, 150, 220), WHITE][i % 4], sp_alpha)
+
+            scene_state['open_btn_rect'] = btn_rect
+
+    elif phase in ('open', 'rose'):
+        # ---- DARK → GLOWING BACKGROUND for rose ----
+        # Gradient from dark to deep violet-rose
+        for yy in range(SCREEN_H):
+            ratio = yy / SCREEN_H
+            rr = int(10 + ratio * 20 + rose_bloom * 30)
+            gg = int(5 + ratio * 8 + rose_bloom * 10)
+            bb = int(20 + ratio * 30 + rose_bloom * 20)
+            pygame.draw.line(surface, (rr, gg, bb), (0, yy), (SCREEN_W, yy))
+
+        # Background glow rings
+        for i in range(5):
+            ring_r = int((80 + i * 50) * rose_bloom)
+            if ring_r > 0:
+                rn_s = pygame.Surface((ring_r * 2 + 4, ring_r * 2 + 4), pygame.SRCALPHA)
+                ra = int(15 + i * 5)
+                pygame.draw.circle(rn_s, (255, 80, 150, ra), (ring_r + 2, ring_r + 2), ring_r)
+                surface.blit(rn_s, (cx - ring_r - 2, cy - ring_r - 2))
+
+        # Update and draw rose sparkles
+        rose_sparkles[:] = [sp for sp in rose_sparkles if sp.update()]
+        for sp in rose_sparkles:
+            sp.draw(surface)
+
+        # Add new sparkles periodically
+        if rose_bloom > 0.3 and random.random() < 0.4:
+            rose_sparkles.append(RoseSparkle(cx, cy, int(120 * rose_bloom)))
+
+        # Draw the 3D rose
+        draw_3d_rose(surface, cx, cy - 20, t, scale=1.0, bloom_progress=rose_bloom)
+
+        # Title text when rose fully bloomed
+        if rose_bloom > 0.7:
+            alpha_title = int(min(1.0, (rose_bloom - 0.7) / 0.3) * 255)
+            title_font = get_font(42, bold=True)
+            title_text = "🌹 Dành Tặng Thùy Chi 🌹"
+            # Glow
+            glow_col = (255, 120, 180)
+            for dx2, dy2 in [(-2, -2), (2, -2), (-2, 2), (2, 2)]:
+                gt = title_font.render(title_text, True, glow_col)
+                gt.set_alpha(int(alpha_title * 0.5))
+                gr2 = gt.get_rect(center=(SCREEN_W // 2, SCREEN_H - 130 + dx2))
+                surface.blit(gt, gr2)
+            # Main title
+            ts = title_font.render(title_text, True, (255, 200, 220))
+            ts.set_alpha(alpha_title)
+            tr = ts.get_rect(center=(SCREEN_W // 2, SCREEN_H - 130))
+            surface.blit(ts, tr)
+
+            # Sub text
+            sub_font = get_font(24)
+            sub_txt = sub_font.render("✨ Chúc mừng sinh nhật! ✨", True, (255, 230, 240))
+            sub_txt.set_alpha(alpha_title)
+            sub_rect = sub_txt.get_rect(center=(SCREEN_W // 2, SCREEN_H - 85))
+            surface.blit(sub_txt, sub_rect)
+
+        # Next button when rose fully bloomed
+        if rose_bloom >= 1.0:
+            btn_w2, btn_h2 = 180, 48
+            btn_x2 = (SCREEN_W - btn_w2) // 2
+            btn_y2 = SCREEN_H - 55
+            pulse2 = math.sin(t * 3) * 3
+            nr = pygame.Rect(btn_x2 - pulse2, btn_y2 - pulse2 / 2, btn_w2 + pulse2 * 2, btn_h2 + pulse2)
+            pygame.draw.rect(surface, (80, 20, 60), (nr.x + 2, nr.y + 2, nr.w, nr.h), border_radius=24)
+            pygame.draw.rect(surface, CANDY_HOT_PINK, nr, border_radius=24)
+            pygame.draw.rect(surface, DARK_PINK, nr, 2, border_radius=24)
+            nt = get_font(22, bold=True).render("Tiếp theo ▶", True, WHITE)
+            ntr = nt.get_rect(center=nr.center)
+            surface.blit(nt, ntr)
+            scene_state['next_btn_rect'] = nr
+
+    return scene_state
+
+
+# ============================================================
 #  SCENE 4: BIRTHDAY CARD
 # ============================================================
 def draw_scene_card(surface, t, confetti_list, sparkles, bubbles):
